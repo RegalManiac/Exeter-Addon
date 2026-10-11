@@ -1,15 +1,39 @@
 plugins {
-    alias(libs.plugins.fabric.loom)
+    id("net.fabricmc.fabric-loom") version "1.16.3"
+    id("maven-publish")
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 base {
     archivesName = properties["archives_base_name"] as String
     group = properties["maven_group"] as String
+    version = properties["version"] as String
+}
 
-    version = libs.versions.mod.version.get() + "+mc" + libs.versions.minecraft.get()
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor(0, "seconds")
 }
 
 repositories {
+    maven {
+        url = uri("https://jm.gserv.me/repository/maven-public/")
+        content {
+            includeGroup("info.journeymap")
+        }
+    }
+    maven {
+        url = uri("https://api.modrinth.com/maven/")
+        content {
+            includeGroup("maven.modrinth")
+        }
+    }
+    maven { url = uri("https://www.cursemaven.com") }
+    maven { url = uri("https://masa.dy.fi/maven") }
+    // Meteor Client
     maven {
         name = "meteor-maven"
         url = uri("https://maven.meteordev.org/releases")
@@ -18,51 +42,47 @@ repositories {
         name = "meteor-maven-snapshots"
         url = uri("https://maven.meteordev.org/snapshots")
     }
+    mavenCentral()
+    gradlePluginPortal()
 }
 
 dependencies {
-    // Fabric
-    minecraft(libs.minecraft)
-    mappings(variantOf(libs.yarn) { classifier("v2") })
-    modImplementation(libs.fabric.loader)
+    // Minecraft
+    minecraft("com.mojang:minecraft:${properties["minecraft_version"] as String}")
 
-    // Meteor
-    modImplementation(libs.meteor.client)
+    // Fabric
+    implementation("net.fabricmc:fabric-loader:${properties["loader_version"] as String}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${properties["fabric_version"] as String}")
+
+    // Meteor Client
+    implementation("meteordevelopment:meteor-client:${properties["minecraft_version"] as String}-SNAPSHOT")
+    compileOnly("meteordevelopment:baritone:${properties["minecraft_version"] as String}-SNAPSHOT")
+    implementation("org.meteordev:starscript:0.2.5")
+    implementation("meteordevelopment:orbit:0.2.4")
 }
 
-tasks {
-    processResources {
-        val propertyMap = mapOf(
-            "version" to project.version,
-            "mc_version" to libs.versions.minecraft.get()
-        )
+// loom {
+//     accessWidenerPath = file("src/main/resources/sindiaddon-pro.accesswidener")
+// }
 
-        inputs.properties(propertyMap)
-
-        filteringCharset = "UTF-8"
-
-        filesMatching("fabric.mod.json") {
-            expand(propertyMap)
-        }
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
+}
 
-    jar {
-        inputs.property("archivesName", project.base.archivesName.get())
+tasks.processResources {
+    val replaceProperties = mapOf(
+        "version" to properties["version"] as String,
+        "minecraft_version" to properties["minecraft_version"] as String
+    )
+    inputs.properties(replaceProperties)
 
-        from("LICENSE") {
-            rename { "${it}_${inputs.properties["archivesName"]}" }
-        }
+    filesMatching("fabric.mod.json") {
+        expand(replaceProperties)
     }
+}
 
-    java {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    withType<JavaCompile> {
-        options.encoding = "UTF-8"
-        options.release = 21
-        options.compilerArgs.add("-Xlint:deprecation")
-        options.compilerArgs.add("-Xlint:unchecked")
-    }
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
 }

@@ -73,7 +73,7 @@ public abstract class GuiRendererBlurMixin implements BlurRendererAccess {
             r.end();
             rTex.end();
             r.render();
-            rTex.render("u_Texture", TEXTURE.getGlTextureView(), TEXTURE.getSampler());
+            rTex.render("u_Texture", TEXTURE.getTextureView(), TEXTURE.getSampler());
             if (activeScissor != null) activeScissor.pop();
 
             if (hasScissor) {
@@ -86,7 +86,7 @@ public abstract class GuiRendererBlurMixin implements BlurRendererAccess {
                         0, request.u1(), request.v1(), request.u2(), request.v2(), WHITE);
             }
             rTex.end();
-            rTex.render(currentBlurTexture, RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+            rTex.render(currentBlurTexture, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
 
             if (hasScissor) {
                 activeScissor.pop();
@@ -157,8 +157,8 @@ public abstract class GuiRendererBlurMixin implements BlurRendererAccess {
         }
         currentBlurTexture = blurredTexture;
 
-        int screenWidth = mc.getWindow().getFramebufferWidth();
-        int screenHeight = mc.getWindow().getFramebufferHeight();
+        int screenWidth = mc.getWindow().getWidth();
+        int screenHeight = mc.getWindow().getHeight();
 
         float u1 = (float) (x / screenWidth);
         float v1 = 1.0f - (float) (y / screenHeight);

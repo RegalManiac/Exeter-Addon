@@ -27,10 +27,11 @@ import meteordevelopment.meteorclient.systems.accounts.Account;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.MacWindowUtil;
+import net.minecraft.client.gui.screens.Screen;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
+
+import com.mojang.blaze3d.platform.MacosUtil;
 
 public class BaseGuiTheme extends GuiTheme {
     // Blur capture instance - managed by the theme
@@ -66,7 +67,7 @@ public class BaseGuiTheme extends GuiTheme {
         .sliderRange(0.75, 4)
         .onSliderRelease()
         .onChanged(aDouble -> {
-            if (mc.currentScreen instanceof WidgetScreen) ((WidgetScreen) mc.currentScreen).invalidate();
+            if (mc.gui.screen() instanceof WidgetScreen) ((WidgetScreen) mc.gui.screen()).invalidate();
         })
         .build()
     );
@@ -90,8 +91,15 @@ public class BaseGuiTheme extends GuiTheme {
         .description("Hide HUD when in GUI.")
         .defaultValue(false)
         .onChanged(v -> {
-            if (mc.currentScreen instanceof WidgetScreen) mc.options.hudHidden = v;
+            if (mc.gui.screen() instanceof WidgetScreen) mc.gameRenderer.gameRenderState().guiRenderState.isHudHidden = v;
         })
+        .build()
+    );
+
+    public final Setting<Boolean> modulesHelpText = sgGeneral.add(new BoolSetting.Builder()
+        .name("modules-help-text")
+        .description("Toggle help text in the modules screen.")
+        .defaultValue(true)
         .build()
     );
 
@@ -552,8 +560,8 @@ public class BaseGuiTheme extends GuiTheme {
     public double scale(double value) {
         double scaled = value * scale.get();
 
-        if (MacWindowUtil.IS_MAC) {
-            scaled /= (double) mc.getWindow().getWidth() / mc.getWindow().getFramebufferWidth();
+        if (MacosUtil.IS_MACOS) {
+            scaled /= (double) mc.getWindow().getScreenWidth() / mc.getWindow().getWidth();
         }
 
         return scaled;
@@ -562,6 +570,11 @@ public class BaseGuiTheme extends GuiTheme {
     @Override
     public boolean categoryIcons() {
         return categoryIcons.get();
+    }
+
+    @Override
+    public boolean modulesHelpText() {
+        return modulesHelpText.get();
     }
 
     @Override

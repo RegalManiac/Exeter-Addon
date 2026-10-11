@@ -9,7 +9,7 @@ import meteordevelopment.meteorclient.gui.tabs.TabScreen;
 import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.gui.widgets.WTopBar;
 import meteordevelopment.meteorclient.utils.render.color.Color;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
@@ -42,7 +42,7 @@ public class WBaseTopBar extends WTopBar implements BaseWidget {
         @Override
         protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
             double pad = pad();
-            Screen screen = mc.currentScreen;
+            Screen screen = mc.gui.screen();
             boolean isActiveTab = screen instanceof TabScreen && ((TabScreen) screen).tab == myTab;
             Color color = getButtonColor(pressed || isActiveTab, mouseOver);
 

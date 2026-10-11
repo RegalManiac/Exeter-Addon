@@ -83,8 +83,8 @@ public abstract class InventoryHudMixin {
         InventoryHud self = (InventoryHud) (Object) this;
         double x = self.x, y = self.y, w = self.getWidth(), h = self.getHeight();
 
-        int screenWidth = mc.getWindow().getFramebufferWidth();
-        int screenHeight = mc.getWindow().getFramebufferHeight();
+        int screenWidth = mc.getWindow().getWidth();
+        int screenHeight = mc.getWindow().getHeight();
 
         float u1 = (float) (x / screenWidth);
         float v1 = 1.0f - (float) (y / screenHeight);
@@ -94,7 +94,7 @@ public abstract class InventoryHudMixin {
         Renderer2D.TEXTURE.begin();
         Renderer2D.TEXTURE.texQuad(x, y, w, h, 0, u1, v1, u2, v2, WHITE);
         Renderer2D.TEXTURE.end();
-        Renderer2D.TEXTURE.render(blurTexture, RenderSystem.getSamplerCache().get(FilterMode.LINEAR));
+        Renderer2D.TEXTURE.render(blurTexture, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
     }
 
     @Inject(method = "render", at = @At("TAIL"))

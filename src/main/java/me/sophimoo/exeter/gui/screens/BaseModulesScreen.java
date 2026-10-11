@@ -15,10 +15,9 @@ import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.misc.NbtUtils;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.Pair;
-import net.minecraft.item.Items;
-
+import com.mojang.datafixers.util.Pair;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -40,13 +39,15 @@ public class BaseModulesScreen extends TabScreen {
     public void initWidgets() {
         controller = add(new WCategoryController()).widget();
 
-        WVerticalList help = add(theme.verticalList()).pad(4).bottom().widget();
-        help.add(theme.label("Left click - Toggle module"));
-        help.add(theme.label("Right click - Open module settings"));
+        if (theme.modulesHelpText()) {
+            WVerticalList help = add(theme.verticalList()).pad(4).bottom().widget();
+            help.add(theme.label("Left click - Toggle module"));
+            help.add(theme.label("Right click - Open module settings"));
+        }
     }
 
     protected void addIcon(WContainer container, Object icon) {
-        if (icon instanceof net.minecraft.item.ItemStack stack) {
+        if (icon instanceof net.minecraft.world.item.ItemStack stack) {
             container.add(theme.item(stack)).pad(2);
         } else {
             container.add(theme.label(icon != null ? icon.toString() : "")).pad(2);
@@ -123,7 +124,7 @@ public class BaseModulesScreen extends TabScreen {
 
         for (int i = 0; i < Math.min(items.size(), max); i++) {
             Module m = toModule.apply(items.get(i));
-            String highlight = items.get(i) instanceof Pair ? ((Pair<Module, String>) items.get(i)).getRight() : null;
+            String highlight = items.get(i) instanceof Pair ? ((Pair<Module, String>) items.get(i)).getSecond() : null;
             var cell = container.add(highlight != null ? theme.module(m, highlight) : theme.module(m)).expandX();
             if (i == 0) cell.padTop(scaled);
             if (i == Math.min(items.size(), max) - 1) cell.padBottom(scaled);
@@ -137,7 +138,7 @@ public class BaseModulesScreen extends TabScreen {
         if (!modules.isEmpty()) {
             WSection section = w.add(theme.section("Modules")).expandX().widget();
             section.spacing = spacing();
-            addSearchItemsWithPadding(section, modules, Pair::getLeft);
+            addSearchItemsWithPadding(section, modules, Pair::getFirst);
         }
 
         Set<Module> settings = Modules.get().searchSettingTitles(text);
@@ -153,7 +154,7 @@ public class BaseModulesScreen extends TabScreen {
         w.id = "search";
 
         if (theme.categoryIcons()) {
-            w.beforeHeaderInit = wContainer -> addIcon(wContainer, Items.COMPASS.getDefaultStack());
+            w.beforeHeaderInit = wContainer -> addIcon(wContainer, Items.COMPASS.getDefaultInstance());
         }
 
         c.add(w);
@@ -188,7 +189,7 @@ public class BaseModulesScreen extends TabScreen {
         w.padding = w.spacing = 0;
 
         if (theme.categoryIcons()) {
-            w.beforeHeaderInit = wContainer -> addIcon(wContainer, Items.NETHER_STAR.getDefaultStack());
+            w.beforeHeaderInit = wContainer -> addIcon(wContainer, Items.NETHER_STAR.getDefaultInstance());
         }
 
         Cell<WWindow> cell = c.add(w);

@@ -11,7 +11,7 @@ import meteordevelopment.meteorclient.gui.utils.AlignmentX;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WPressable;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.render.color.Color;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
@@ -146,7 +146,7 @@ public class WBaseModule extends WPressable implements BaseWidget {
     @Override
     protected void onPressed(int button) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) module.toggle();
-        else if (button == GLFW_MOUSE_BUTTON_RIGHT) mc.setScreen(theme().moduleScreen(module));
+        else if (button == GLFW_MOUSE_BUTTON_RIGHT) mc.gui.setScreen(theme().moduleScreen(module));
     }
 
     @Override
@@ -201,12 +201,12 @@ public class WBaseModule extends WPressable implements BaseWidget {
             animationProgress = 0;
         } else {
             animationProgress += delta * (shouldFadeIn ? fadeInSpeed : fadeOutSpeed) * (shouldFadeIn ? 1 : -1);
-            animationProgress = MathHelper.clamp(animationProgress, 0, 1);
+            animationProgress = Mth.clamp(animationProgress, 0, 1);
         }
 
         // Update indicator animation (separate from main animation)
         indicatorProgress += delta * (isActive ? fadeInSpeed : fadeOutSpeed) * (isActive ? 1 : -1);
-        indicatorProgress = MathHelper.clamp(indicatorProgress, 0, 1);
+        indicatorProgress = Mth.clamp(indicatorProgress, 0, 1);
 
         // Get gradient direction setting
         ModuleGradientDirection gradientDir = theme().moduleGradientDirection.get();

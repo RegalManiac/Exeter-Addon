@@ -8,7 +8,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
-import com.mojang.blaze3d.textures.TextureFormat;
+import com.mojang.blaze3d.GpuFormat;
 import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.events.game.ResolutionChangedEvent;
@@ -19,8 +19,7 @@ import meteordevelopment.meteorclient.renderer.FixedUniformStorage;
 import meteordevelopment.meteorclient.renderer.MeshRenderer;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.orbit.listeners.ConsumerListener;
-import net.minecraft.client.gl.DynamicUniformStorage;
-
+import net.minecraft.client.renderer.DynamicUniformStorage;
 import java.nio.ByteBuffer;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -59,7 +58,7 @@ public class WorldFramebufferCapture {
     private float blurScale;
 
     private record BlurUniformData(float halfTexelSizeX, float halfTexelSizeY, float offset)
-        implements DynamicUniformStorage.Uploadable {
+        implements DynamicUniformStorage.DynamicUniform {
         @Override
         public void write(ByteBuffer buffer) {
             Std140Builder.intoBuffer(buffer)
@@ -110,8 +109,8 @@ public class WorldFramebufferCapture {
     private void ensureInitialized() {
         if (initialized) return;
 
-        int fbWidth = mc.getWindow().getFramebufferWidth();
-        int fbHeight = mc.getWindow().getFramebufferHeight();
+        int fbWidth = mc.getWindow().getWidth();
+        int fbHeight = mc.getWindow().getHeight();
 
         if (fbWidth <= 0 || fbHeight <= 0) {
             return;
@@ -130,7 +129,7 @@ public class WorldFramebufferCapture {
         ensureInitialized();
         if (!initialized) return;
 
-        boolean needsBlur = hudBlurRequested || (mc.currentScreen instanceof WidgetScreen);
+        boolean needsBlur = hudBlurRequested || (mc.gui.screen() instanceof WidgetScreen);
         hudBlurRequested = false; // consume — next frame's HUD must re-request if still needed
 
         if (blurIterations > 0 && needsBlur) {
@@ -140,7 +139,7 @@ public class WorldFramebufferCapture {
             blurAppliedThisTick = false;
         }
 
-        if (mc.currentScreen instanceof WidgetScreen) {
+        if (mc.gui.screen() instanceof WidgetScreen) {
             capturedThisTick = true;
         }
     }
@@ -178,7 +177,7 @@ public class WorldFramebufferCapture {
         }
 
         // Render directly from framebuffer like meteor's Blur module does
-        GpuTextureView sourceView = mc.getFramebuffer().getColorAttachmentView();
+        GpuTextureView sourceView = mc.gameRenderer.mainRenderTarget().getColorTextureView();
 
         // Downsample - directly from framebuffer
         renderToFbo(blurFbos[0], sourceView, MeteorRenderPipelines.BLUR_DOWN, blurUbos[0]);
@@ -200,7 +199,7 @@ public class WorldFramebufferCapture {
             .pipeline(pipeline)
             .fullscreen()
             .uniform("BlurData", ubo)
-            .sampler("u_Texture", source, RenderSystem.getSamplerCache().get(FilterMode.LINEAR))
+            .sampler("u_Texture", source, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR))
             .end();
     }
 
@@ -225,8 +224,8 @@ public class WorldFramebufferCapture {
     }
 
     private GpuTextureView createBlurFbo(int level) {
-        int baseWidth = (int) (mc.getWindow().getFramebufferWidth() * blurScale);
-        int baseHeight = (int) (mc.getWindow().getFramebufferHeight() * blurScale);
+        int baseWidth = (int) (mc.getWindow().getWidth() * blurScale);
+        int baseHeight = (int) (mc.getWindow().getHeight() * blurScale);
 
         double scale = 1 / Math.pow(2, level);
 
@@ -239,7 +238,7 @@ public class WorldFramebufferCapture {
         GpuTexture texture = RenderSystem.getDevice().createTexture(
             "BaseTheme Blur FBO " + level,
             15,
-            TextureFormat.RGBA8,
+            GpuFormat.RGBA8_UNORM,
             width,
             height,
             1,
@@ -256,7 +255,7 @@ public class WorldFramebufferCapture {
     public GpuTextureView getBlurredTexture() {
         if (!initialized) return null;
         if (!capturedThisTick) return null;
-        if (!(mc.currentScreen instanceof WidgetScreen)) return null;
+        if (!(mc.gui.screen() instanceof WidgetScreen)) return null;
 
         if (blurIterations > 0 && blurFbos != null && blurFbos.length > 0 && blurFbos[0] != null) {
             return blurFbos[0];
