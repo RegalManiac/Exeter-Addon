@@ -3,7 +3,12 @@ package me.sophimoo.exeter.gui.renderer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.buffers.Std140SizeCalculator;
+import com.mojang.blaze3d.pipeline.BindGroupLayout;
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
@@ -18,8 +23,10 @@ import meteordevelopment.meteorclient.gui.WidgetScreen;
 import meteordevelopment.meteorclient.renderer.FixedUniformStorage;
 import meteordevelopment.meteorclient.renderer.MeshRenderer;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
+import meteordevelopment.meteorclient.renderer.MeteorVertexFormats;
 import meteordevelopment.orbit.listeners.ConsumerListener;
 import net.minecraft.client.renderer.DynamicUniformStorage;
+import net.minecraft.resources.Identifier;
 import java.nio.ByteBuffer;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
@@ -168,6 +175,56 @@ public class WorldFramebufferCapture {
         previousOffset = -1;
     }
 
+    private static final BindGroupLayout MESH_BIND_GROUP = BindGroupLayout.builder()
+        .withUniform("MeshData", UniformType.UNIFORM_BUFFER)
+        .build();
+
+    private static final RenderPipeline.Snippet MESH_UNIFORMS = RenderPipeline.builder()
+        .withBindGroupLayout(MESH_BIND_GROUP)
+        .buildSnippet();
+
+    private static RenderPipeline blurDownPipeline;
+    private static RenderPipeline blurUpPipeline;
+
+    private static RenderPipeline getBlurDownPipeline() {
+        if (blurDownPipeline == null) {
+            if (MeteorRenderPipelines.BLUR_DOWN.getDepthStencilState() == null) {
+                blurDownPipeline = MeteorRenderPipelines.BLUR_DOWN;
+            } else {
+                blurDownPipeline = createSafeBlurPipeline("pipeline/blur/down",
+                    MeteorClient.identifier("shaders/blur_down.frag"));
+            }
+        }
+        return blurDownPipeline;
+    }
+
+    private static RenderPipeline getBlurUpPipeline() {
+        if (blurUpPipeline == null) {
+            if (MeteorRenderPipelines.BLUR_UP.getDepthStencilState() == null) {
+                blurUpPipeline = MeteorRenderPipelines.BLUR_UP;
+            } else {
+                blurUpPipeline = createSafeBlurPipeline("pipeline/blur/up",
+                    MeteorClient.identifier("shaders/blur_up.frag"));
+            }
+        }
+        return blurUpPipeline;
+    }
+
+    private static RenderPipeline createSafeBlurPipeline(String location, Identifier fragmentShader) {
+        return RenderPipeline.builder(MESH_UNIFORMS)
+            .withLocation(Identifier.fromNamespaceAndPath("exeter", location))
+            .withVertexBinding(0, MeteorVertexFormats.POS2).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+            .withVertexShader(MeteorClient.identifier("shaders/blur.vert"))
+            .withFragmentShader(fragmentShader)
+            .withBindGroupLayout(BindGroupLayout.builder()
+                .withSampler("u_Texture")
+                .withUniform("BlurData", UniformType.UNIFORM_BUFFER)
+                .build())
+            .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+            .withCull(false)
+            .build();
+    }
+
     private void applyBlur() {
         if (blurFbos == null || blurFbos[0] == null) return;
 
@@ -176,19 +233,22 @@ public class WorldFramebufferCapture {
             previousOffset = blurOffset;
         }
 
+        RenderPipeline downPipeline = getBlurDownPipeline();
+        RenderPipeline upPipeline = getBlurUpPipeline();
+
         // Render directly from framebuffer like meteor's Blur module does
         GpuTextureView sourceView = mc.gameRenderer.mainRenderTarget().getColorTextureView();
 
         // Downsample - directly from framebuffer
-        renderToFbo(blurFbos[0], sourceView, MeteorRenderPipelines.BLUR_DOWN, blurUbos[0]);
+        renderToFbo(blurFbos[0], sourceView, downPipeline, blurUbos[0]);
 
         for (int i = 0; i < blurIterations - 1; i++) {
-            renderToFbo(blurFbos[i + 1], blurFbos[i], MeteorRenderPipelines.BLUR_DOWN, blurUbos[i + 1]);
+            renderToFbo(blurFbos[i + 1], blurFbos[i], downPipeline, blurUbos[i + 1]);
         }
 
         // Upsample
         for (int i = blurIterations - 1; i >= 1; i--) {
-            renderToFbo(blurFbos[i - 1], blurFbos[i], MeteorRenderPipelines.BLUR_UP, blurUbos[i - 1]);
+            renderToFbo(blurFbos[i - 1], blurFbos[i], upPipeline, blurUbos[i - 1]);
         }
     }
 
